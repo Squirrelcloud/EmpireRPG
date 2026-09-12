@@ -3,9 +3,9 @@
 Unreal Editor cannot run in this workspace. This folder is the importable kit
 for a Third Person project named **EmpireRPG**.
 
-v0 is done when you can **defend Neon Row**, **debrief Marcus**, and **watch
-control / loyalty change**. No city, no cars, no MetaHuman until that loop
-works. Scope for v0 volumes: **Hall**, **Neon Row**, **Docks**.
+v0 is done when you can **defend Neon Row**, **debrief Marcus**, **take the Docks**,
+and **watch control / loyalty change**. No city, no cars, no MetaHuman until that
+loop works. Scope for v0 volumes: **Hall**, **Neon Row**, **Docks**.
 
 ## Regenerate tables
 
@@ -53,4 +53,4 @@ Tick:
 
 - Heat-band `controlLeak` plus `holdDecayPerTick` on every non-Hall district.
 - Hall control never below 70.
-- Betrayal roll if loyalty < 28. Extra chance if city max heat > 70.
+- Betrayal roll if loyalty < 28. Extra chance if city max heat > 70. Press in the Hall while thin. Call when armed.

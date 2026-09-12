@@ -4,9 +4,12 @@ import { AssignView } from "@/components/empire/AssignView";
 import { CommandBoard } from "@/components/empire/CommandBoard";
 import { DefenseView } from "@/components/empire/DefenseView";
 import { DialogueView } from "@/components/empire/DialogueView";
+import { HallOfFame } from "@/components/empire/HallOfFame";
 import { KitPanel } from "@/components/empire/KitPanel";
 import { LibraryPanel } from "@/components/empire/LibraryPanel";
+import { NightView } from "@/components/empire/NightView";
 import { TitleScreen } from "@/components/empire/TitleScreen";
+import { WarRoom } from "@/components/empire/WarRoom";
 import { useEmpire } from "@/lib/empire/store";
 
 export function EmpireApp() {
@@ -25,7 +28,11 @@ export function EmpireApp() {
   }, [markHydrated]);
 
   if (!hydrated) {
-    return <div className="min-h-dvh bg-bg" />;
+    return (
+      <div className="min-h-dvh bg-bg text-fg">
+        <TitleScreen />
+      </div>
+    );
   }
 
   return (
@@ -36,8 +43,11 @@ export function EmpireApp() {
         {phase === "assign" ? <AssignView /> : null}
         {phase === "defense" || phase === "resolve" ? <DefenseView /> : null}
         {phase === "command" ? <CommandBoard /> : null}
+        {phase === "night" ? <NightView /> : null}
         <KitPanel />
         <LibraryPanel />
+        <WarRoom />
+        <HallOfFame />
       </div>
     </QueryClientProvider>
   );

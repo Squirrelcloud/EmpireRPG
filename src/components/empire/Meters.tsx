@@ -26,7 +26,7 @@ export function Meter({
       </div>
       <div className="h-1 overflow-hidden rounded-full bg-elevated">
         <div
-          className={cn("h-full rounded-full transition-[width] duration-300 ease-out", tones[tone])}
+          className={cn("meter-fill h-full rounded-full", tones[tone])}
           style={{ width: `${v}%` }}
         />
       </div>

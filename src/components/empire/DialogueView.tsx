@@ -28,14 +28,19 @@ export function DialogueView() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent md:bg-gradient-to-r" />
       </div>
-      <div className="relative flex flex-1 flex-col justify-end gap-6 px-5 py-8 md:justify-center md:px-12">
+      <div
+        key={dialogueId}
+        className="relative flex flex-1 flex-col justify-end gap-6 px-5 py-8 md:justify-center md:px-12"
+      >
         <div className="max-w-xl space-y-4">
-          <p className="text-xs font-medium tracking-[0.22em] text-muted uppercase">
+          <p className="anim-rise text-xs font-medium tracking-[0.22em] text-muted uppercase">
             {speaker?.DisplayName ?? row.Speaker}
           </p>
-          <p className="font-display text-2xl font-medium leading-snug text-fg sm:text-3xl">{row.Text}</p>
+          <p className="anim-rise anim-d1 font-display text-2xl font-medium leading-snug text-fg sm:text-3xl">
+            {row.Text}
+          </p>
         </div>
-        <div className="flex max-w-xl flex-col gap-2">
+        <div className="anim-rise anim-d2 flex max-w-xl flex-col gap-2">
           {choices.map((c) => (
             <Button
               key={c.key}

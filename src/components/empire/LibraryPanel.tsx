@@ -17,6 +17,7 @@ import {
 } from "@/lib/empire/art";
 import { listDriveImages } from "@/lib/empire/drive";
 import { playClick } from "@/lib/empire/audio";
+import { useOverlayPresence } from "@/lib/empire/motion";
 import { useEmpire } from "@/lib/empire/store";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ export function LibraryPanel() {
   const setArt = useEmpire((s) => s.setArt);
   const stashDrop = useEmpire((s) => s.stashDrop);
   const restoreHallArt = useEmpire((s) => s.restoreHallArt);
+  const { present, leaving } = useOverlayPresence(open);
   const [tab, setTab] = useState<Tab>("hall");
   const [slotId, setSlotId] = useState<string>("crew:Player");
   const [query, setQuery] = useState("");
@@ -66,7 +68,7 @@ export function LibraryPanel() {
     drive.refetch,
   );
 
-  if (!open || !slot) return null;
+  if (!present || !slot) return null;
 
   const current = slotSrc(slot, crews, territories, mapArt);
 
@@ -99,8 +101,17 @@ export function LibraryPanel() {
   const driveImages = drive.data?.status === "ok" ? drive.data.images : [];
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-bg/60">
-      <aside className="flex h-full w-full max-w-lg flex-col bg-surface shadow-border">
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div
+        className={cn("absolute inset-0 bg-bg/60", leaving ? "anim-veil-out" : "anim-veil")}
+        aria-hidden
+      />
+      <aside
+        className={cn(
+          "relative flex h-full w-full max-w-lg flex-col bg-surface shadow-border",
+          leaving ? "anim-sheet-out" : "anim-sheet",
+        )}
+      >
         <header className="flex items-center justify-between gap-3 px-5 py-4">
           <div>
             <p className="text-xs tracking-[0.22em] text-muted uppercase">Still library</p>

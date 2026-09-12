@@ -43,6 +43,18 @@ export const HALL_LIBRARY: HallStill[] = [
     label: "District map",
     group: "place",
   },
+  {
+    id: "place-fame",
+    src: "/art/hall-fame.jpg",
+    label: "Honor wall",
+    group: "place",
+  },
+  {
+    id: "place-plaque",
+    src: "/art/fame-plaque.jpg",
+    label: "Empty plate",
+    group: "place",
+  },
 ];
 
 export function artSlots(): ArtSlot[] {

@@ -1,6 +1,6 @@
 # Empire — Hall Command
 
-Defend Neon Row. Debrief Marcus. Watch control and loyalty move.
+Defend Neon Row. Take the Docks. Debrief Marcus. Watch control and loyalty move.
 
 Playable Hall sim plus an Unreal-ready data kit (`EmpireRPG_UE5/`). v0 is Hall, Neon Row, and the Docks. No city until that loop works.
 
@@ -9,10 +9,12 @@ Playable Hall sim plus an Unreal-ready data kit (`EmpireRPG_UE5/`). v0 is Hall, 
 1. Enter the Hall.
 2. Assign crew (three bodies, max). Marcus stays at the table.
 3. Pick a tactic. Hold or slip.
-4. Debrief Marcus. Meters move.
-5. Tick the night.
+4. Debrief Marcus. Cameras, then Command.
+5. Take the Docks. Two bodies on the river. Debrief the warehouse.
+6. Let the night run. Morning take, then Marcus on the books.
+7. Take the name and Rico wants the corners. Press Vex while she is thin.
 
-**Library** (title + Command): paint crew and districts from Hall stills, Drive photos, or dropped files.
+War room tables the walk. Hall of Fame keeps who sat and who walked. Library paints crew and districts from Hall stills, Drive photos, or dropped files.
 
 ## Unreal kit
 

@@ -55,7 +55,9 @@ vehicles, or MetaHuman. Stop after step 10 and play the loop.
    Node list: `Docs/BP_EmpireSim.md` → Debrief.
 
 10. **PIE the loop**
-    Play → trigger Neon Row defense → resolve → debrief Marcus → watch `Control[NeonRow]` and `Loyalty[*]` change on screen.
-    If those three things happen, v0 is done. Do not build a city.
+    Play → trigger Neon Row defense → resolve → debrief Marcus → take the Docks
+    (debug key `2` / overlap `Vol_Docks`) → debrief the river → watch `Control[Docks]`
+    and `Loyalty[Vex]` change on screen.
+    If Neon, Docks, and both debriefs move meters, v0 is done. Do not build a city.
 
 Optional after 10: debug key `2` for `TakeoverDocks`. Betrayal events fire from TickSim when thresholds hit.

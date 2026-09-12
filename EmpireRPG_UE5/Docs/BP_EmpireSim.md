@@ -19,7 +19,7 @@ Event: Custom event `TickSim` (timer 1s, or key `T`).
    - For crew in `{Vex, Rico}`:
      - If `Loyalty[crew] >= 28` or crew already flagged `Betrayed`, skip.
      - `Chance = 0.03` ; if `CityHeat > 70` then `Chance = 0.16`.
-     - Random bool → if true, fire `BetrayalVex` or `BetrayalRico` (open dialogue, set loyalty 0, flag Betrayed, Docks/Hall control penalty from quest row).
+     - Random bool → if true, fire `BetrayalVex` or `BetrayalRico` (open dialogue — buy, cut, or let the sale. Cut/sale sets loyalty 0, flag Betrayed, Docks/Hall penalty from the choice). Press while thin is a Hall talk, not a tick.
 4. Then 2 — **Dispatch** `OnSimTick` (control, heat, loyalty snapshots).
    Print `NeonRow control` and `Vex loyalty`.
 

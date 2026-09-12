@@ -8,6 +8,7 @@ import type {
   DialogueRow,
   EmpireSeed,
   HeatBand,
+  NightResult,
   QuestRow,
   RuntimeCrew,
   RuntimeTerritory,
@@ -116,12 +117,14 @@ export function tickSim(args: {
   crews: Record<string, RuntimeCrew>;
   territories: Record<string, RuntimeTerritory>;
   events: string[];
+  patrols: { id: TerritoryId; name: string }[];
   betrayal: "Vex" | "Rico" | null;
 } {
   const { seed } = args;
   const rules = seed.simRules;
   const territories: Record<string, RuntimeTerritory> = {};
   const events: string[] = [];
+  const patrols: { id: TerritoryId; name: string }[] = [];
 
   for (const [id, t] of Object.entries(args.territories)) {
     if (!t.V0Active) {
@@ -140,7 +143,10 @@ export function tickSim(args: {
       control: clamp(t.control - leak, 0, 100),
       heat: clamp(t.heat + (patrol ? 2 : -0.3), 0, 100),
     };
-    if (patrol) events.push(`Patrol heat on ${t.DisplayName}.`);
+    if (patrol) {
+      events.push(`Patrol heat on ${t.DisplayName}.`);
+      patrols.push({ id: id as TerritoryId, name: t.DisplayName });
+    }
   }
 
   const cityHeat = Math.max(...rules.v0Scope.map((id) => territories[id]?.heat ?? 0));
@@ -162,7 +168,66 @@ export function tickSim(args: {
     }
   }
 
-  return { crews, territories, events, betrayal };
+  return { crews, territories, events, patrols, betrayal };
+}
+
+export function runNight(args: {
+  seed: EmpireSeed;
+  crews: Record<string, RuntimeCrew>;
+  territories: Record<string, RuntimeTerritory>;
+  nightTick: number;
+}): {
+  crews: Record<string, RuntimeCrew>;
+  territories: Record<string, RuntimeTerritory>;
+  events: string[];
+  result: NightResult;
+} {
+  const remaining = args.seed.simRules.ticksPerDay - (args.nightTick % args.seed.simRules.ticksPerDay);
+  const neonBefore = args.territories.NeonRow?.control ?? 0;
+  const docksBefore = args.territories.Docks?.control ?? 0;
+  const cityBefore = cityHeat(args.territories, args.seed.simRules.v0Scope);
+  const bandBefore = heatBand(args.seed.simRules, cityBefore).id;
+
+  let crews = args.crews;
+  let territories = args.territories;
+  const events: string[] = [];
+  const patrols: { id: TerritoryId; name: string }[] = [];
+  let betrayal: "Vex" | "Rico" | null = null;
+  let ticks = 0;
+
+  for (let i = 0; i < remaining; i += 1) {
+    const step = tickSim({ seed: args.seed, crews, territories });
+    crews = step.crews;
+    territories = step.territories;
+    events.push(...step.events);
+    patrols.push(...step.patrols);
+    ticks += 1;
+    if (step.betrayal) {
+      betrayal = step.betrayal;
+      break;
+    }
+  }
+
+  const dayRolled = ticks === remaining;
+  const cityAfter = cityHeat(territories, args.seed.simRules.v0Scope);
+
+  return {
+    crews,
+    territories,
+    events,
+    result: {
+      ticks,
+      patrols,
+      neonLeak: neonBefore - (territories.NeonRow?.control ?? 0),
+      docksLeak: docksBefore - (territories.Docks?.control ?? 0),
+      gained: dayRolled ? incomeOf(territories, args.seed.simRules) : 0,
+      dayRolled,
+      betrayal,
+      bandBefore,
+      bandAfter: heatBand(args.seed.simRules, cityAfter).id,
+      cityHeatAfter: cityAfter,
+    },
+  };
 }
 
 export function choicesOf(row: DialogueRow): DialogueChoice[] {
@@ -213,19 +278,23 @@ export function applyChoice(args: {
     for (const id of args.assigned) bumpLoyalty(id, -3);
     bumpLoyalty("Marcus", -2);
   }
-
-  if (args.choice.heatDelta) {
-    const neon = territories.NeonRow;
-    if (neon) {
-      territories.NeonRow = { ...neon, heat: clamp(neon.heat + args.choice.heatDelta, 0, 100) };
+  if (args.choice.flag === "creditRemaining" || args.choice.flag === "morningPayCrew") {
+    for (const c of Object.values(crews)) {
+      if (c.Deployable && !c.betrayed) bumpLoyalty(c.Name, 3);
     }
+    bumpLoyalty("Marcus", 3);
   }
-  if (args.choice.controlId && args.choice.controlDelta) {
-    const t = territories[args.choice.controlId];
+
+  if (args.choice.heatDelta || args.choice.controlDelta) {
+    const targetId = args.choice.controlId || "NeonRow";
+    const t = territories[targetId];
     if (t) {
-      territories[args.choice.controlId] = {
+      territories[targetId] = {
         ...t,
-        control: clamp(t.control + args.choice.controlDelta, 0, 100),
+        heat: args.choice.heatDelta ? clamp(t.heat + args.choice.heatDelta, 0, 100) : t.heat,
+        control: args.choice.controlDelta
+          ? clamp(t.control + args.choice.controlDelta, 0, 100)
+          : t.control,
       };
     }
   }
@@ -235,6 +304,10 @@ export function applyChoice(args: {
   }
   if (args.choice.flag === "ricoBetrayed" && crews.Rico) {
     crews.Rico = { ...crews.Rico, loyalty: 0, betrayed: true };
+  }
+  if (args.choice.flag === "ricoWord" && crews.Rico && !crews.Rico.betrayed) {
+    const rico = crews.Rico;
+    crews.Rico = { ...rico, loyalty: Math.min(rico.loyalty, 36) };
   }
 
   const nextId = args.choice.next || null;

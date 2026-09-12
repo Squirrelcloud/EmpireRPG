@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { useOverlayPresence } from "@/lib/empire/motion";
 import { seed, useEmpire } from "@/lib/empire/store";
+import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
 const TASKS = [
@@ -12,17 +14,27 @@ const TASKS = [
   "TickSim: heat bands and hold decay.",
   "Defense trigger on Neon Row with tactics.",
   "WBP_Debrief driven by DT_Dialogue.",
-  "PIE: defend, debrief, watch meters change.",
+  "PIE: defend Neon, take Docks, debrief, watch meters.",
 ];
 
 export function KitPanel() {
   const open = useEmpire((s) => s.kitOpen);
   const openKit = useEmpire((s) => s.openKit);
-  if (!open) return null;
+  const { present, leaving } = useOverlayPresence(open);
+  if (!present) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-bg/60">
-      <aside className="flex h-full w-full max-w-lg flex-col bg-surface shadow-border">
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div
+        className={cn("absolute inset-0 bg-bg/60", leaving ? "anim-veil-out" : "anim-veil")}
+        aria-hidden
+      />
+      <aside
+        className={cn(
+          "relative flex h-full w-full max-w-lg flex-col bg-surface shadow-border",
+          leaving ? "anim-sheet-out" : "anim-sheet",
+        )}
+      >
         <header className="flex items-center justify-between gap-3 px-5 py-4">
           <div>
             <p className="text-xs tracking-[0.22em] text-muted uppercase">Unreal kit</p>

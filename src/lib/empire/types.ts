@@ -9,7 +9,8 @@ export type Phase =
   | "resolve"
   | "debrief"
   | "command"
-  | "event";
+  | "event"
+  | "night";
 
 export interface CrewRow {
   Name: CrewId;
@@ -168,6 +169,16 @@ export interface LogEntry {
   tone: "neutral" | "good" | "bad";
 }
 
+export interface FameNight {
+  id: number;
+  day: number;
+  title: string;
+  territory: string;
+  names: string[];
+  tactic: string;
+  won: boolean;
+}
+
 export interface DefenseResult {
   territoryId: TerritoryId;
   tacticId: TacticId;
@@ -178,6 +189,19 @@ export interface DefenseResult {
   won: boolean;
   controlDelta: number;
   heatDelta: number;
+}
+
+export interface NightResult {
+  ticks: number;
+  patrols: { id: TerritoryId; name: string }[];
+  neonLeak: number;
+  docksLeak: number;
+  gained: number;
+  dayRolled: boolean;
+  betrayal: "Vex" | "Rico" | null;
+  bandBefore: string;
+  bandAfter: string;
+  cityHeatAfter: number;
 }
 
 export type ChoiceKey = "A" | "B" | "C";

@@ -8,11 +8,14 @@ import {
   type ArtSlot,
   type StashItem,
 } from "./art";
+import { fameNightFromDoor, fameNightFromNight, fameNightFromWalk } from "./fame";
 import type {
   CrewId,
   DefenseResult,
   EmpireSeed,
+  FameNight,
   LogEntry,
+  NightResult,
   Phase,
   RuntimeCrew,
   RuntimeTerritory,
@@ -24,10 +27,9 @@ import {
   choicesOf,
   cityHeat,
   dialogueById,
-  incomeOf,
   questById,
   resolveDefense,
-  tickSim,
+  runNight,
 } from "./sim";
 
 const seed = seedJson as EmpireSeed;
@@ -59,11 +61,22 @@ export interface EmpireState {
   log: LogEntry[];
   flags: Record<string, boolean>;
   lastDefense: DefenseResult | null;
+  lastNight: NightResult | null;
   kitOpen: boolean;
   libraryOpen: boolean;
+  warOpen: boolean;
+  fameOpen: boolean;
   mapArt: string;
   stash: StashItem[];
-  v0: { defended: boolean; debriefed: boolean };
+  fameNights: FameNight[];
+  v0: {
+    defended: boolean;
+    debriefed: boolean;
+    docksTaken: boolean;
+    docksDebriefed: boolean;
+    vexGone: boolean;
+    ricoGone: boolean;
+  };
   selectedTerritory: TerritoryId | null;
   hydrated: boolean;
 }
@@ -84,9 +97,15 @@ interface EmpireActions {
   pickTactic: (id: TacticId) => void;
   finishResolve: () => void;
   tickNight: () => void;
+  finishNight: () => void;
   startDocks: () => void;
+  startDoor: (id: "Vex" | "Rico") => void;
   openKit: (open: boolean) => void;
   openLibrary: (open: boolean) => void;
+  openWar: (open: boolean) => void;
+  openFame: (open: boolean) => void;
+  applyPlan: (crew: CrewId[], tacticId?: TacticId, questId?: string) => void;
+  startWalk: () => void;
   setArt: (slot: ArtSlot, src: string) => void;
   stashDrop: (item: StashItem) => void;
   restoreHallArt: () => void;
@@ -109,16 +128,26 @@ const initial = (): Omit<EmpireState, "hydrated"> => ({
   log: [],
   flags: {},
   lastDefense: null,
+  lastNight: null,
   kitOpen: false,
   libraryOpen: false,
+  warOpen: false,
+  fameOpen: false,
   mapArt: HALL_MAP_ART,
   stash: [],
-  v0: { defended: false, debriefed: false },
+  fameNights: [],
+  v0: { defended: false, debriefed: false, docksTaken: false, docksDebriefed: false, vexGone: false, ricoGone: false },
   selectedTerritory: "NeonRow",
 });
 
 function pushLog(log: LogEntry[], text: string, tone: LogEntry["tone"] = "neutral"): LogEntry[] {
   return [{ id: logSeq++, text, tone }, ...log].slice(0, 24);
+}
+
+function livingCrew(state: EmpireState, ids: CrewId[]): CrewId[] {
+  return ids
+    .filter((id) => state.crews[id]?.Deployable && !state.crews[id].betrayed)
+    .slice(0, seed.simRules.defense.maxAssigned);
 }
 
 function applyFlags(state: EmpireState, flags: string[]): FlagPatch {
@@ -133,18 +162,56 @@ function applyFlags(state: EmpireState, flags: string[]): FlagPatch {
       flag === "openAssign" ||
       flag === "preselectLena" ||
       flag === "preselectRicoRay" ||
-      flag === "openAssignDocks"
+      flag === "openAssignDocks" ||
+      flag === "preselectVexRico" ||
+      flag === "preselectLenaRico"
     ) {
       phase = "assign";
-      if (flag === "preselectRicoRay") assigned = ["Rico", "Ray"];
+      if (flag === "preselectRicoRay") assigned = livingCrew(state, ["Rico", "Ray"]);
       if (flag === "preselectLena" && !assigned.includes("Lena")) {
-        assigned = [...assigned, "Lena"].slice(0, 3) as CrewId[];
+        assigned = livingCrew(state, [...assigned, "Lena"]);
       }
+      if (flag === "preselectVexRico") assigned = livingCrew(state, ["Vex", "Rico"]);
+      if (flag === "preselectLenaRico") assigned = livingCrew(state, ["Lena", "Rico"]);
     }
     if (flag === "completeDebrief") v0.debriefed = true;
+    if (flag === "completeDocksDebrief") v0.docksDebriefed = true;
+    if (flag === "vexBetrayed") v0.vexGone = true;
+    if (flag === "ricoBetrayed") v0.ricoGone = true;
     if (flag === "cancelQuest") phase = "command";
   }
   return { flags: nextFlags, assigned, ...(phase ? { phase } : {}), v0 };
+}
+
+function doorFame(state: EmpireState, flags: string[]) {
+  const extra = flags.flatMap((flag) => {
+    if (flag === "vexBetrayed") {
+      return [
+        {
+          id: Date.now(),
+          ...fameNightFromDoor({
+            day: state.day,
+            crewName: state.crews.Vex?.DisplayName ?? "Vex",
+            seat: "The river door",
+          }),
+        },
+      ];
+    }
+    if (flag === "ricoBetrayed") {
+      return [
+        {
+          id: Date.now() + 1,
+          ...fameNightFromDoor({
+            day: state.day,
+            crewName: state.crews.Rico?.DisplayName ?? "Rico",
+            seat: "The corners",
+          }),
+        },
+      ];
+    }
+    return [];
+  });
+  return extra.length ? [...extra, ...state.fameNights].slice(0, 8) : state.fameNights;
 }
 
 function paintSlot(
@@ -198,20 +265,8 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
           choice,
         });
         const flagged = applyFlags({ ...s, crews: applied.crews, territories: applied.territories }, applied.flags);
-
-        if (choice.flag === "vexBetrayed" || choice.flag === "ricoBetrayed") {
-          set({
-            flags: flagged.flags,
-            assigned: flagged.assigned,
-            v0: flagged.v0,
-            crews: applied.crews,
-            territories: applied.territories,
-            phase: "command",
-            dialogueId: null,
-            log: pushLog(s.log, row.Text, "bad"),
-          });
-          return;
-        }
+        const fameNights = doorFame(s, applied.flags);
+        const cash = applied.flags.includes("morningPayCrew") ? Math.max(0, s.cash - 40) : s.cash;
 
         if (flagged.phase === "assign") {
           set({
@@ -220,9 +275,17 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
             v0: flagged.v0,
             crews: applied.crews,
             territories: applied.territories,
+            fameNights,
+            cash,
             phase: "assign",
             dialogueId: null,
-            log: pushLog(s.log, "Roster is open. Three bodies, max."),
+            selectedTerritory: s.activeQuest === "TakeoverDocks" ? "Docks" : "NeonRow",
+            log: pushLog(
+              s.log,
+              s.activeQuest === "TakeoverDocks"
+                ? "Roster is open. Two bodies on the river."
+                : "Roster is open. Three bodies, max.",
+            ),
           });
           return;
         }
@@ -234,10 +297,19 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
             v0: flagged.v0,
             crews: applied.crews,
             territories: applied.territories,
+            fameNights,
+            cash,
             activeQuest: null,
             dialogueId: null,
             phase: "command",
-            log: pushLog(s.log, "Rico stands down."),
+            log: pushLog(
+              s.log,
+              s.activeQuest === "BetrayalRico"
+                ? "The corners wait."
+                : s.activeQuest === "BetrayalVex"
+                  ? "The door waits."
+                  : "Rico stands down.",
+            ),
           });
           return;
         }
@@ -249,6 +321,8 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
             v0: flagged.v0,
             crews: applied.crews,
             territories: applied.territories,
+            fameNights,
+            cash,
             dialogueId: null,
             phase: flagged.v0.debriefed ? "command" : (flagged.phase ?? "command"),
             log: pushLog(s.log, flagged.v0.debriefed ? "Debrief closed. Watch the meters." : row.Text),
@@ -263,19 +337,75 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
           v0: flagged.v0,
           crews: applied.crews,
           territories: applied.territories,
+          fameNights,
+          cash,
           dialogueId: applied.nextId,
           phase: nextRow ? s.phase : "command",
         });
       },
 
       closeDialogue: () =>
-        set((s) => ({
-          phase: "command",
-          dialogueId: null,
-          log: s.v0.debriefed
-            ? pushLog(s.log, "Loop closed. Control and loyalty moved.", "good")
-            : s.log,
-        })),
+        set((s) => {
+          const id = s.dialogueId;
+          const morning = id === "Marcus_Morning_End";
+          const held = id === "Marcus_Vex_Held" || id === "Marcus_Rico_Held";
+          const lean = id === "Marcus_Vex_Lean" || id === "Marcus_Rico_Lean";
+          const word = id === "Marcus_Rico_Word";
+          const doorEnd = id === "Marcus_Vex_End" || id === "Marcus_Rico_End";
+          const doorQuest = s.activeQuest === "BetrayalVex" || s.activeQuest === "BetrayalRico";
+          const ricoHeard =
+            Boolean(s.flags.creditSelf) &&
+            !s.flags.ricoNamed &&
+            !s.v0.ricoGone &&
+            (s.crews.Rico?.loyalty ?? 0) >= 40;
+          const doorLog = held
+            ? {
+                text: id === "Marcus_Vex_Held" ? "Vex is seated." : "Rico is seated.",
+                tone: "good" as const,
+              }
+            : lean
+              ? {
+                  text: id === "Marcus_Vex_Lean" ? "Vex is closer to a buyer." : "Rico is closer to walking.",
+                  tone: "neutral" as const,
+                }
+              : word
+                ? {
+                    text: "Rico is thin. The corners are on the table.",
+                    tone: "neutral" as const,
+                  }
+                : doorEnd
+                ? s.activeQuest === "BetrayalRico"
+                  ? {
+                      text: s.v0.ricoGone ? "The corners are empty." : "Rico is seated.",
+                      tone: s.v0.ricoGone ? ("bad" as const) : ("good" as const),
+                    }
+                  : {
+                      text: s.v0.vexGone ? "The river door is empty." : "Vex is seated.",
+                      tone: s.v0.vexGone ? ("bad" as const) : ("good" as const),
+                    }
+                : null;
+          return {
+            phase: "command" as const,
+            dialogueId: null,
+            activeQuest: doorQuest ? null : s.activeQuest,
+            flags: id === "Marcus_Rico_Held" ? { ...s.flags, ricoNamed: true } : s.flags,
+            log: morning
+              ? pushLog(s.log, "Morning. The take is on the books.", "good")
+              : doorLog
+                ? pushLog(s.log, doorLog.text, doorLog.tone)
+                : ricoHeard
+                  ? pushLog(
+                      s.log,
+                      s.v0.docksDebriefed ? "River closed. Rico heard the name." : "Loop closed. Rico heard the name.",
+                      "good",
+                    )
+                  : s.v0.docksDebriefed
+                    ? pushLog(s.log, "River closed. Control and loyalty moved.", "good")
+                    : s.v0.debriefed
+                      ? pushLog(s.log, "Loop closed. The warehouse door is open.", "good")
+                      : s.log,
+          };
+        }),
 
       toggleAssign: (id) =>
         set((s) => {
@@ -316,13 +446,23 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
           territoryId,
           questId,
         });
+        const docks = questId === "TakeoverDocks";
+        const tacticLabel = seed.simRules.tactics.find((t) => t.id === id)?.label ?? id;
+        const night = fameNightFromWalk({
+          day: s.day,
+          territoryName: territories[territoryId].DisplayName,
+          names: s.assigned.map((crewId) => s.crews[crewId]?.DisplayName ?? crewId),
+          tacticLabel,
+          won: result.won,
+        });
         set({
           crews,
           territories,
           tactic: id,
           lastDefense: result,
           phase: "resolve",
-          v0: { ...s.v0, defended: true },
+          v0: docks ? { ...s.v0, docksTaken: true } : { ...s.v0, defended: true },
+          fameNights: [{ id: Date.now(), ...night }, ...s.fameNights].slice(0, 8),
           log: pushLog(
             s.log,
             result.won
@@ -337,11 +477,10 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
         const s = get();
         if (s.activeQuest === "TakeoverDocks") {
           set({
-            phase: "command",
-            activeQuest: null,
-            assigned: [],
-            tactic: null,
-            log: pushLog(s.log, "Docks walk is over."),
+            phase: "debrief",
+            dialogueId: s.lastDefense?.won ? "Marcus_Docks_Win_01" : "Marcus_Docks_Loss_01",
+            activeQuest: "DebriefDocks",
+            log: pushLog(s.log, "Marcus wants the warehouse names."),
           });
           return;
         }
@@ -355,39 +494,104 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
 
       tickNight: () => {
         const s = get();
-        const { crews, territories, events, betrayal } = tickSim({
+        if (s.phase !== "command" && s.phase !== "title") return;
+        const ran = runNight({
           seed,
           crews: s.crews,
           territories: s.territories,
+          nightTick: s.nightTick,
         });
-        const nextTick = s.nightTick + 1;
-        const dayRoll = nextTick % seed.simRules.ticksPerDay === 0;
-        const gained = dayRoll ? incomeOf(territories, seed.simRules) : 0;
+        const dayRoll = ran.result.dayRolled;
+        const gained = ran.result.gained;
         let log = s.log;
-        for (const e of events) log = pushLog(log, e);
-        if (dayRoll) log = pushLog(log, `Day ${s.day + 1}. Take from the districts: ${gained}.`);
+        for (const e of ran.events) log = pushLog(log, e);
+        if (ran.result.betrayal) log = pushLog(log, `${ran.result.betrayal} has a buyer.`, "bad");
+        else if (dayRoll) log = pushLog(log, `Day ${s.day + 1}. Take from the districts: ${gained}.`, "good");
+        else log = pushLog(log, `Night ran ${ran.result.ticks} ticks.`);
+        const fame = fameNightFromNight({
+          day: dayRoll ? s.day + 1 : s.day,
+          ticks: ran.result.ticks,
+          gained,
+          dayRolled: dayRoll,
+          betrayal: ran.result.betrayal,
+          patrols: ran.result.patrols,
+        });
+        set({
+          crews: ran.crews,
+          territories: ran.territories,
+          nightTick: s.nightTick + ran.result.ticks,
+          day: dayRoll ? s.day + 1 : s.day,
+          cash: s.cash + gained,
+          lastNight: ran.result,
+          phase: "night",
+          warOpen: false,
+          fameNights: [{ id: Date.now(), ...fame }, ...s.fameNights].slice(0, 8),
+          log,
+        });
+      },
 
+      finishNight: () => {
+        const s = get();
+        if (s.phase !== "night" || !s.lastNight) return;
+        const betrayal = s.lastNight.betrayal;
         if (betrayal && !s.flags[`${betrayal.toLowerCase()}Betrayed`]) {
           set({
-            crews,
-            territories,
-            nightTick: nextTick,
-            day: dayRoll ? s.day + 1 : s.day,
-            cash: s.cash + gained,
             phase: "event",
+            lastNight: null,
+            activeQuest: betrayal === "Vex" ? "BetrayalVex" : "BetrayalRico",
             dialogueId: betrayal === "Vex" ? "Event_Vex_01" : "Event_Rico_01",
-            log: pushLog(log, `${betrayal} is off the board.`, "bad"),
           });
           return;
         }
-
+        if (s.lastNight.dayRolled) {
+          set({
+            phase: "debrief",
+            lastNight: null,
+            dialogueId: "Marcus_Morning_01",
+            activeQuest: null,
+            log: pushLog(s.log, "Marcus has the books."),
+          });
+          return;
+        }
         set({
-          crews,
-          territories,
-          nightTick: nextTick,
-          day: dayRoll ? s.day + 1 : s.day,
-          cash: s.cash + gained,
-          log,
+          phase: "command",
+          lastNight: null,
+        });
+      },
+
+      startDoor: (id) => {
+        const s = get();
+        if (s.phase !== "command" && s.phase !== "title") return;
+        if (!s.v0.debriefed) return;
+        const crew = s.crews[id];
+        if (!crew || crew.betrayed) return;
+        const armed = crew.loyalty < seed.simRules.betrayal.loyaltyThreshold;
+        const thin = crew.loyalty < 40;
+        const egoWord = id === "Rico" && Boolean(s.flags.creditSelf) && !s.flags.ricoNamed && !armed && !thin;
+        if (!armed && !thin && !egoWord) return;
+        const dialogueId = armed
+          ? id === "Rico"
+            ? "Event_Rico_01"
+            : "Event_Vex_01"
+          : egoWord
+            ? "Rico_Table_01"
+            : id === "Rico"
+              ? "Event_Rico_Press_01"
+              : "Event_Vex_Press_01";
+        set({
+          phase: "event",
+          activeQuest: id === "Rico" ? "BetrayalRico" : "BetrayalVex",
+          dialogueId,
+          warOpen: false,
+          log: pushLog(
+            s.log,
+            egoWord
+              ? `${crew.DisplayName} wants the name.`
+              : armed
+                ? `${crew.DisplayName} has a buyer.`
+                : `${crew.DisplayName} is at the table.`,
+            armed ? "bad" : "neutral",
+          ),
         });
       },
 
@@ -404,12 +608,88 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
           dialogueId: "Rico_Docks_01",
           assigned: [],
           tactic: null,
+          selectedTerritory: "Docks",
           log: pushLog(s.log, "Rico wants the river."),
         });
       },
 
-      openKit: (open) => set({ kitOpen: open, libraryOpen: open ? false : get().libraryOpen }),
-      openLibrary: (open) => set({ libraryOpen: open, kitOpen: open ? false : get().kitOpen }),
+      openKit: (open) =>
+        set({
+          kitOpen: open,
+          libraryOpen: open ? false : get().libraryOpen,
+          warOpen: open ? false : get().warOpen,
+          fameOpen: open ? false : get().fameOpen,
+        }),
+      openLibrary: (open) =>
+        set({
+          libraryOpen: open,
+          kitOpen: open ? false : get().kitOpen,
+          warOpen: open ? false : get().warOpen,
+          fameOpen: open ? false : get().fameOpen,
+        }),
+      openWar: (open) =>
+        set({
+          warOpen: open,
+          kitOpen: open ? false : get().kitOpen,
+          libraryOpen: open ? false : get().libraryOpen,
+          fameOpen: open ? false : get().fameOpen,
+        }),
+      openFame: (open) =>
+        set({
+          fameOpen: open,
+          kitOpen: false,
+          libraryOpen: false,
+          warOpen: false,
+        }),
+      applyPlan: (crew, tacticId, questId) => {
+        const s = get();
+        const living = livingCrew(s, crew);
+        if (living.length < 1) return;
+        const quest =
+          questId === "TakeoverDocks" || (!questId && s.activeQuest === "TakeoverDocks")
+            ? "TakeoverDocks"
+            : "DefendNeonRow";
+        const row = questById(seed.quests, quest);
+        if (living.length < Math.max(1, row?.RequiredCrewMin ?? 1)) return;
+        if (quest === "TakeoverDocks") {
+          if (!s.v0.debriefed) return;
+          if (s.territories.NeonRow.heat > 80) {
+            set({
+              warOpen: false,
+              log: pushLog(s.log, "Neon Row is too hot to leave.", "bad"),
+            });
+            return;
+          }
+        }
+        const tactic = tacticId && seed.simRules.tactics.some((t) => t.id === tacticId) ? tacticId : null;
+        set({
+          assigned: living,
+          activeQuest: quest,
+          phase: "assign",
+          dialogueId: null,
+          tactic,
+          warOpen: false,
+          selectedTerritory: (row?.TerritoryId ?? "NeonRow") as TerritoryId,
+          log: pushLog(
+            s.log,
+            tactic
+              ? `War room set ${living.join(", ")} · ${seed.simRules.tactics.find((t) => t.id === tactic)?.label}.`
+              : `War room set ${living.join(", ")}.`,
+          ),
+        });
+      },
+      startWalk: () => {
+        const s = get();
+        if (!s.v0.debriefed) return;
+        set({
+          phase: "assign",
+          activeQuest: "DefendNeonRow",
+          assigned: [],
+          tactic: null,
+          dialogueId: null,
+          log: pushLog(s.log, "Roster is open. Walk Neon Row again."),
+        });
+      },
       setArt: (slot, src) =>
         set((s) => {
           const painted = paintSlot(s, slot, src);
@@ -440,7 +720,7 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
           };
         }),
       selectTerritory: (id) => set({ selectedTerritory: id }),
-      reset: () => set({ ...initial(), hydrated: true, kitOpen: false, libraryOpen: false }),
+      reset: () => set({ ...initial(), hydrated: true, kitOpen: false, libraryOpen: false, warOpen: false, fameOpen: false }),
     }),
     {
       name: "empire-hall-v0",
@@ -452,6 +732,18 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
           ...p,
           mapArt: p.mapArt || HALL_MAP_ART,
           stash: Array.isArray(p.stash) ? p.stash : [],
+          fameNights: Array.isArray(p.fameNights) ? p.fameNights : [],
+          lastNight: p.lastNight ?? null,
+          v0: {
+            defended: false,
+            debriefed: false,
+            docksTaken: false,
+            docksDebriefed: false,
+            vexGone: false,
+            ricoGone: false,
+            ...p.v0,
+          },
+          phase: p.phase === "night" && !p.lastNight ? "command" : (p.phase ?? current.phase),
         };
       },
       partialize: (s) => ({
@@ -468,10 +760,12 @@ export const useEmpire = create<EmpireState & EmpireActions>()(
         log: s.log,
         flags: s.flags,
         lastDefense: s.lastDefense,
+        lastNight: s.lastNight,
         v0: s.v0,
         selectedTerritory: s.selectedTerritory,
         mapArt: s.mapArt,
         stash: s.stash,
+        fameNights: s.fameNights,
       }),
     },
   ),
@@ -481,6 +775,14 @@ export { seed };
 
 export function loopClosed(v0: EmpireState["v0"]) {
   return v0.defended && v0.debriefed;
+}
+
+export function riverClosed(v0: EmpireState["v0"]) {
+  return Boolean(v0.docksTaken && v0.docksDebriefed);
+}
+
+export function docksUnlocked(v0: EmpireState["v0"], territories: Record<string, RuntimeTerritory>) {
+  return v0.debriefed && territories.NeonRow.heat <= 80;
 }
 
 export function heatNow(territories: Record<string, RuntimeTerritory>) {

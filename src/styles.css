@@ -27,6 +27,13 @@
 
   --shadow-border: 0 0 0 1px rgb(255 255 255 / 0.08);
   --shadow-border-hover: 0 0 0 1px rgb(255 255 255 / 0.13);
+
+  --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-stagger: 40ms;
+  --motion-micro: 80ms;
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+  --motion-slow: 400ms;
 }
 
 @layer base {
@@ -59,11 +66,162 @@
   }
 }
 
+@keyframes anim-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes anim-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes anim-sheet-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes anim-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes anim-veil-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes anim-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes anim-flash {
+  0% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.anim-rise {
+  animation: anim-rise var(--motion-slow) var(--ease-out-smooth) both;
+}
+.anim-d1 {
+  animation-delay: var(--motion-stagger);
+}
+.anim-d2 {
+  animation-delay: calc(var(--motion-stagger) * 2);
+}
+.anim-d3 {
+  animation-delay: calc(var(--motion-stagger) * 3);
+}
+.anim-d4 {
+  animation-delay: calc(var(--motion-stagger) * 4);
+}
+.anim-d5 {
+  animation-delay: calc(var(--motion-stagger) * 5);
+}
+.anim-d6 {
+  animation-delay: calc(var(--motion-stagger) * 6);
+}
+
+.anim-stagger > * {
+  animation: anim-rise var(--motion-slow) var(--ease-out-smooth) both;
+}
+.anim-stagger > *:nth-child(1) {
+  animation-delay: var(--motion-stagger);
+}
+.anim-stagger > *:nth-child(2) {
+  animation-delay: calc(var(--motion-stagger) * 2);
+}
+.anim-stagger > *:nth-child(3) {
+  animation-delay: calc(var(--motion-stagger) * 3);
+}
+.anim-stagger > *:nth-child(4) {
+  animation-delay: calc(var(--motion-stagger) * 4);
+}
+.anim-stagger > *:nth-child(5) {
+  animation-delay: calc(var(--motion-stagger) * 5);
+}
+.anim-stagger > *:nth-child(6) {
+  animation-delay: calc(var(--motion-stagger) * 6);
+}
+
+.anim-sheet {
+  animation: anim-sheet-in var(--motion-fast) var(--ease-out-smooth) both;
+}
+.anim-sheet-out {
+  animation: anim-sheet-out var(--motion-quick) ease-out both;
+}
+.anim-veil {
+  animation: anim-veil-in var(--motion-fast) ease-out both;
+}
+.anim-veil-out {
+  animation: anim-veil-out var(--motion-quick) ease-out both;
+}
+.anim-shake {
+  animation: anim-shake 280ms var(--ease-out-smooth) both;
+}
+.anim-flash {
+  animation: anim-flash 500ms ease-out both;
+}
+
+.meter-fill {
+  transition-property: width;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-out-smooth);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
 }

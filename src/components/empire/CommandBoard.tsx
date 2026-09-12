@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Meter } from "@/components/empire/Meters";
 import { playClick, playTick } from "@/lib/empire/audio";
 import { HALL_MAP_ART } from "@/lib/empire/art";
-import { heatBand } from "@/lib/empire/sim";
-import { heatNow, loopClosed, seed, useEmpire } from "@/lib/empire/store";
+import { heatBand, questById } from "@/lib/empire/sim";
+import { bandShift, debriefAdvice, nightOutlook, recommendPlay, winLabel } from "@/lib/empire/strategy";
+import { heatNow, loopClosed, riverClosed, docksUnlocked, seed, useEmpire } from "@/lib/empire/store";
 import { cn } from "@/lib/utils";
 import type { TerritoryId } from "@/lib/empire/types";
 
@@ -15,18 +16,57 @@ export function CommandBoard() {
   const selectTerritory = useEmpire((s) => s.selectTerritory);
   const tickNight = useEmpire((s) => s.tickNight);
   const startDocks = useEmpire((s) => s.startDocks);
+  const startDoor = useEmpire((s) => s.startDoor);
   const openKit = useEmpire((s) => s.openKit);
   const openLibrary = useEmpire((s) => s.openLibrary);
+  const openWar = useEmpire((s) => s.openWar);
+  const openFame = useEmpire((s) => s.openFame);
+  const startWalk = useEmpire((s) => s.startWalk);
   const reset = useEmpire((s) => s.reset);
   const day = useEmpire((s) => s.day);
+  const nightTick = useEmpire((s) => s.nightTick);
   const cash = useEmpire((s) => s.cash);
   const log = useEmpire((s) => s.log);
   const v0 = useEmpire((s) => s.v0);
+  const flags = useEmpire((s) => s.flags);
   const mapArt = useEmpire((s) => s.mapArt);
   const done = loopClosed(v0);
+  const river = riverClosed(v0);
+  const docksOpen = docksUnlocked(v0, territories);
   const city = heatNow(territories);
   const band = heatBand(seed.simRules, city);
   const focus = selected ? territories[selected] : territories.NeonRow;
+  const street = docksOpen && !river ? "Docks" : "NeonRow";
+  const recQuest = questById(seed.quests, street === "Docks" ? "TakeoverDocks" : "DefendNeonRow");
+  const rec = recommendPlay({
+    seed,
+    crews,
+    territory: street === "Docks" ? territories.Docks : territories.NeonRow,
+    quest: recQuest,
+    cityHeat: city,
+  });
+  const advice = debriefAdvice({
+    crews,
+    cityHeat: city,
+    heatThreshold: seed.simRules.betrayal.heatThreshold,
+    street,
+  });
+  const doorRows = (["Vex", "Rico"] as const).flatMap((id) => {
+    const c = crews[id];
+    if (!c || c.betrayed) return [];
+    const armed = c.loyalty < seed.simRules.betrayal.loyaltyThreshold;
+    const thin = c.loyalty < 40;
+    const word = id === "Rico" && Boolean(flags.creditSelf) && !flags.ricoNamed && !armed && !thin;
+    if (!armed && !thin && !word) return [];
+    return [{ crew: c, id, armed, thin, word }];
+  });
+  const doorCrew = doorRows.find((row) => row.armed) ?? doorRows.find((row) => row.thin) ?? doorRows[0];
+  const doorArmed = Boolean(doorCrew?.armed);
+  const doorChance =
+    doorArmed && city > seed.simRules.betrayal.heatThreshold
+      ? seed.simRules.betrayal.chanceWhenBoth
+      : seed.simRules.betrayal.baseChancePerTick;
+  const night = nightOutlook({ seed, crews, territories, cityHeat: city, nightTick });
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col gap-4 px-4 py-4">
@@ -44,9 +84,81 @@ export function CommandBoard() {
         </div>
       </header>
 
-      {done ? (
-        <div className="rounded-xl bg-elevated px-4 py-3 text-sm shadow-border">
-          Loop closed. Neon Row resolved. Marcus debriefed. Control and loyalty moved.
+      {doorRows.map((row) => (
+        <button
+          key={row.id}
+          type="button"
+          onClick={() => {
+            playClick();
+            startDoor(row.id);
+          }}
+          className="anim-rise rounded-xl bg-elevated px-4 py-3 text-left shadow-border transition-[transform,box-shadow] duration-150 ease-out enabled:active:scale-[0.96]"
+        >
+          <p className={cn("text-xs tracking-[0.22em] uppercase", row.armed ? "text-heat" : "text-muted")}>
+            {row.id === "Vex" ? "The door" : "The corners"}
+          </p>
+          <p className="mt-1 text-sm">
+            {row.crew.DisplayName} · {row.armed ? "Armed" : row.thin ? "Thin" : "Heard the name"} ·{" "}
+            {Math.round(row.crew.loyalty)}
+            {row.armed ? ` · ${Math.round(doorChance * 100)}%/tick` : ""}
+          </p>
+          <p className="mt-1 text-xs text-subtle">
+            {row.armed
+              ? `Call ${row.id === "Vex" ? "her" : "him"} before the night does.`
+              : row.word
+                ? "Buy them back or keep them."
+                : row.id === "Vex"
+                  ? "Buy the door or lean."
+                  : "Buy the corners or lean."}
+          </p>
+        </button>
+      ))}
+
+      {rec ? (
+        <button
+          type="button"
+          onClick={() => {
+            playClick();
+            openWar(true);
+          }}
+          className="anim-rise rounded-xl bg-elevated px-4 py-3 text-left shadow-border transition-[transform,box-shadow] duration-150 ease-out enabled:active:scale-[0.96]"
+        >
+          <p className="text-xs tracking-[0.22em] text-muted uppercase">Tonight</p>
+          <p className="mt-1 text-sm">
+            {rec.play.name} · {winLabel(rec.forecast.win)} ·{" "}
+            {bandShift(rec.forecast.bandNow, rec.forecast.bandAfter)}
+          </p>
+          <p className="mt-1 text-xs text-subtle">{advice.why}</p>
+        </button>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => {
+          playTick();
+          tickNight();
+        }}
+        className="anim-rise rounded-xl bg-elevated px-4 py-3 text-left shadow-border transition-[transform,box-shadow] duration-150 ease-out enabled:active:scale-[0.96]"
+      >
+        <p className="text-xs tracking-[0.22em] text-muted uppercase">Night</p>
+        <p className="mt-1 text-sm">
+          {night.ticksToPay} tick{night.ticksToPay === 1 ? "" : "s"} · take {night.income} · {night.band.id}
+        </p>
+        <p className="mt-1 text-xs text-subtle">
+          Patrol {Math.round(night.band.patrolChance * 100)}%. Let it run until morning.
+        </p>
+      </button>
+
+      {done && !river ? (
+        <div className="rounded-xl bg-surface px-4 py-3 text-sm shadow-border">
+          Neon closed. Warehouse door is ajar. Two bodies on the river, then debrief Marcus.
+        </div>
+      ) : null}
+      {river ? (
+        <div className="rounded-xl bg-surface px-4 py-3 text-sm shadow-border">
+          {v0.vexGone
+            ? "River closed. The door is empty. Let the night run, walk Neon, or take the Docks without her."
+            : "River closed. Let the night run, walk Neon, take the Docks again, or keep the door."}
         </div>
       ) : null}
 
@@ -125,18 +237,71 @@ export function CommandBoard() {
         <div className="flex flex-col gap-2">
           <Button
             className="min-h-12"
+            variant="secondary"
+            onClick={() => {
+              playClick();
+              openWar(true);
+            }}
+          >
+            War room
+          </Button>
+          <Button
+            className="min-h-12"
+            variant={docksOpen && !river ? "secondary" : "primary"}
             onClick={() => {
               playTick();
               tickNight();
             }}
           >
-            Tick the night
+            Let the night run
           </Button>
-          <Button variant="secondary" className="min-h-12" disabled={!done} onClick={startDocks}>
+          <Button variant="secondary" className="min-h-12" disabled={!done} onClick={startWalk}>
+            Walk Neon Row again
+          </Button>
+          <Button
+            variant={docksOpen && !river ? "primary" : "secondary"}
+            className="min-h-12"
+            disabled={!done}
+            onClick={startDocks}
+          >
             Take the Docks
+          </Button>
+          <Button
+            variant={doorArmed ? "heat" : "secondary"}
+            className="min-h-12"
+            disabled={!doorCrew}
+            onClick={() => {
+              if (!doorCrew) return;
+              playClick();
+              startDoor(doorCrew.id);
+            }}
+          >
+            {doorCrew
+              ? doorCrew.armed
+                ? doorCrew.id === "Vex"
+                  ? "Call the door"
+                  : "Call the corners"
+                : doorCrew.word
+                  ? "Rico wants the name"
+                  : doorCrew.id === "Vex"
+                    ? "Press Vex"
+                    : "Press Rico"
+              : v0.vexGone
+                ? "The door is empty"
+                : "The door is seated"}
           </Button>
           <Button variant="ghost" className="min-h-12" onClick={() => openLibrary(true)}>
             Library
+          </Button>
+          <Button
+            variant="ghost"
+            className="min-h-12"
+            onClick={() => {
+              playClick();
+              openFame(true);
+            }}
+          >
+            Hall of Fame
           </Button>
           <Button variant="ghost" className="min-h-12" onClick={() => openKit(true)}>
             Data kit
