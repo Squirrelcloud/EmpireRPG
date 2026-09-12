@@ -98,8 +98,18 @@ export function artCandidates(src: string, fallback: string): string[] {
   if (isDriveSrc(src)) {
     return [...driveCandidates(driveFileId(src)), fallback];
   }
-  if (src && src !== fallback) return [src, fallback];
-  return [src || fallback];
+  const out: string[] = [];
+  const push = (value: string) => {
+    if (!value || out.includes(value)) return;
+    out.push(value);
+    if (value.startsWith("/art/")) {
+      const mirror = `https://raw.githubusercontent.com/Squirrelcloud/EmpireRPG/main/public${value}`;
+      if (!out.includes(mirror)) out.push(mirror);
+    }
+  };
+  push(src);
+  push(fallback);
+  return out.length ? out : [fallback];
 }
 
 export function hallCrewArt(): Record<string, string> {
