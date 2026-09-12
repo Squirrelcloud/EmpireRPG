@@ -1,0 +1,7 @@
+﻿Name,DisplayName,Role,Combat,Influence,StreetSense,Loyalty,HeatTolerance,StartingTerritory,Portrait,Notes,Deployable,DebriefSpeaker
+Player,Ash,Boss,62,80,55,100,70,Hall,/art/crew-player.jpg,You. Hall owner. Optional on the street.,True,False
+Rico,Rico Navarro,Lieutenant,68,72,64,78,60,Hall,/art/crew-rico.jpg,Runs the corners. Push-the-alley bonus. Betrayal if loyalty collapses.,True,False
+Lena,Lena Park,Fixer,44,70,88,74,50,Hall,/art/crew-lena.jpg,"Cameras, clerks, ledgers. Cut-the-lights bonus.",True,False
+Marcus,Marcus Hale,Liaison,50,66,80,62,55,Hall,/art/crew-marcus.jpg,Does not deploy on v0 defense. Runs the debrief.,False,True
+Ray,Ray Cole,Enforcer,90,30,40,85,80,NeonRow,/art/crew-ray.jpg,Holds ground. Hold-the-corners bonus.,True,False
+Vex,Vex,Wildcard,72,48,76,36,40,Docks,/art/crew-vex.jpg,Already thin. First betrayal candidate.,True,False

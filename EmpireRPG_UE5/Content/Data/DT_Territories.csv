@@ -1,0 +1,6 @@
+﻿Name,DisplayName,DistrictType,Adjacent,StartingControl,StartingHeat,Income,DefenseDifficulty,UnlockWave,V0Active,MapX,MapY,Art,Blurb
+Hall,The Hall,HQ,"NeonRow,MarketStrip",100,8,40,20,0,True,47,30,/art/hall.jpg,Brick civic hall. Your table. Control never drops below 70.
+NeonRow,Neon Row,Street,"Hall,MarketStrip,Docks",48,64,70,55,0,True,84,38,/art/neon-row.jpg,Wet commercial street. Contested tonight. v0 defense.
+MarketStrip,Market Strip,Market,"Hall,NeonRow,OldWard",12,30,90,50,1,False,50,78,/art/districts.jpg,Canvas stalls. Locked until the v0 loop is closed.
+Docks,The Docks,Industrial,"NeonRow,OldWard",35,44,55,48,0,True,13,56,/art/docks.jpg,"River, cranes, warehouse doors. v0 territory after Neon Row."
+OldWard,Old Ward,Ruin,"MarketStrip,Docks",0,20,25,70,2,False,86,80,/art/districts.jpg,Crumbling masonry. Not in v0.

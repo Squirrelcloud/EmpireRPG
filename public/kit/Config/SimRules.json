@@ -1,0 +1,107 @@
+{
+  "tickSeconds": 1.0,
+  "ticksPerDay": 8,
+  "startingCash": 120,
+  "heatBands": [
+    {
+      "id": "Cold",
+      "min": 0,
+      "max": 24,
+      "patrolChance": 0.05,
+      "incomeMult": 1.15,
+      "controlLeak": 0.15
+    },
+    {
+      "id": "Warm",
+      "min": 25,
+      "max": 49,
+      "patrolChance": 0.18,
+      "incomeMult": 1.0,
+      "controlLeak": 0.35
+    },
+    {
+      "id": "Hot",
+      "min": 50,
+      "max": 74,
+      "patrolChance": 0.42,
+      "incomeMult": 0.72,
+      "controlLeak": 0.7
+    },
+    {
+      "id": "Burning",
+      "min": 75,
+      "max": 100,
+      "patrolChance": 0.7,
+      "incomeMult": 0.4,
+      "controlLeak": 1.4
+    }
+  ],
+  "betrayal": {
+    "loyaltyThreshold": 28,
+    "heatThreshold": 70,
+    "baseChancePerTick": 0.03,
+    "chanceWhenBoth": 0.16,
+    "primaryCrewId": "Vex",
+    "secondaryCrewId": "Rico"
+  },
+  "control": {
+    "holdDecayPerTick": 0.45,
+    "hallFloor": 70,
+    "winBonus": 18,
+    "lossPenalty": 22,
+    "clampMin": 0,
+    "clampMax": 100
+  },
+  "defense": {
+    "combatWeight": 0.55,
+    "streetSenseWeight": 0.45,
+    "secondaryShare": 0.42,
+    "variance": 12,
+    "maxAssigned": 3
+  },
+  "tactics": [
+    {
+      "id": "HoldCorners",
+      "label": "Hold the corners",
+      "bonusIf": [
+        "Ray"
+      ],
+      "power": 8,
+      "heat": -6,
+      "control": 2,
+      "blurb": "Ray's work. Slow, ugly, holds ground."
+    },
+    {
+      "id": "PushAlley",
+      "label": "Push the alley",
+      "bonusIf": [
+        "Rico"
+      ],
+      "power": 8,
+      "heat": 10,
+      "control": 8,
+      "blurb": "Rico walks it loud. You keep the street and you keep the noise."
+    },
+    {
+      "id": "CutLights",
+      "label": "Cut the lights",
+      "bonusIf": [
+        "Lena",
+        "Vex"
+      ],
+      "power": 8,
+      "heat": -12,
+      "control": -4,
+      "blurb": "Cameras go dark. Less claim, less heat."
+    }
+  ],
+  "v0Scope": [
+    "Hall",
+    "NeonRow",
+    "Docks"
+  ],
+  "v0Quests": [
+    "DefendNeonRow",
+    "DebriefMarcus"
+  ]
+}

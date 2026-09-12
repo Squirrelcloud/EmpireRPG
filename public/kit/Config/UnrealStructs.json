@@ -1,0 +1,285 @@
+{
+  "FCrewRow": {
+    "base": "FTableRowBase",
+    "fields": [
+      {
+        "name": "DisplayName",
+        "type": "FText"
+      },
+      {
+        "name": "Role",
+        "type": "FName"
+      },
+      {
+        "name": "Combat",
+        "type": "int32"
+      },
+      {
+        "name": "Influence",
+        "type": "int32"
+      },
+      {
+        "name": "StreetSense",
+        "type": "int32"
+      },
+      {
+        "name": "Loyalty",
+        "type": "int32"
+      },
+      {
+        "name": "HeatTolerance",
+        "type": "int32"
+      },
+      {
+        "name": "StartingTerritory",
+        "type": "FName"
+      },
+      {
+        "name": "Portrait",
+        "type": "FSoftObjectPath"
+      },
+      {
+        "name": "Notes",
+        "type": "FString"
+      },
+      {
+        "name": "Deployable",
+        "type": "bool"
+      },
+      {
+        "name": "DebriefSpeaker",
+        "type": "bool"
+      }
+    ]
+  },
+  "FTerritoryRow": {
+    "base": "FTableRowBase",
+    "fields": [
+      {
+        "name": "DisplayName",
+        "type": "FText"
+      },
+      {
+        "name": "DistrictType",
+        "type": "FName"
+      },
+      {
+        "name": "Adjacent",
+        "type": "FString",
+        "note": "Comma-separated row names. Split with ParseIntoArray."
+      },
+      {
+        "name": "StartingControl",
+        "type": "int32"
+      },
+      {
+        "name": "StartingHeat",
+        "type": "int32"
+      },
+      {
+        "name": "Income",
+        "type": "int32"
+      },
+      {
+        "name": "DefenseDifficulty",
+        "type": "int32"
+      },
+      {
+        "name": "UnlockWave",
+        "type": "int32"
+      },
+      {
+        "name": "V0Active",
+        "type": "bool"
+      },
+      {
+        "name": "MapX",
+        "type": "int32",
+        "note": "Percent of map texture, web/debug only."
+      },
+      {
+        "name": "MapY",
+        "type": "int32"
+      },
+      {
+        "name": "Art",
+        "type": "FSoftObjectPath"
+      },
+      {
+        "name": "Blurb",
+        "type": "FString"
+      }
+    ]
+  },
+  "FQuestRow": {
+    "base": "FTableRowBase",
+    "fields": [
+      {
+        "name": "Title",
+        "type": "FText"
+      },
+      {
+        "name": "Type",
+        "type": "FName",
+        "note": "Defense | Debrief | Takeover | Betrayal | Reclamation"
+      },
+      {
+        "name": "TerritoryId",
+        "type": "FName"
+      },
+      {
+        "name": "RequiredCrewMin",
+        "type": "int32"
+      },
+      {
+        "name": "HeatDeltaOnWin",
+        "type": "int32"
+      },
+      {
+        "name": "ControlDeltaOnWin",
+        "type": "int32"
+      },
+      {
+        "name": "ControlDeltaOnLoss",
+        "type": "int32"
+      },
+      {
+        "name": "LoyaltyDeltaOnWin",
+        "type": "int32"
+      },
+      {
+        "name": "LoyaltyDeltaOnLoss",
+        "type": "int32"
+      },
+      {
+        "name": "DialogueStartId",
+        "type": "FName"
+      },
+      {
+        "name": "UnlockAfter",
+        "type": "FName"
+      },
+      {
+        "name": "V0Active",
+        "type": "bool"
+      },
+      {
+        "name": "Summary",
+        "type": "FString"
+      }
+    ]
+  },
+  "FDialogueRow": {
+    "base": "FTableRowBase",
+    "fields": [
+      {
+        "name": "Speaker",
+        "type": "FName"
+      },
+      {
+        "name": "Text",
+        "type": "FText"
+      },
+      {
+        "name": "ChoiceA_Text",
+        "type": "FText"
+      },
+      {
+        "name": "ChoiceA_Next",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceA_LoyaltyId",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceA_LoyaltyDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceA_HeatDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceA_ControlId",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceA_ControlDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceA_Flag",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceB_Text",
+        "type": "FText"
+      },
+      {
+        "name": "ChoiceB_Next",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceB_LoyaltyId",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceB_LoyaltyDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceB_HeatDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceB_ControlId",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceB_ControlDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceB_Flag",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceC_Text",
+        "type": "FText"
+      },
+      {
+        "name": "ChoiceC_Next",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceC_LoyaltyId",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceC_LoyaltyDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceC_HeatDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceC_ControlId",
+        "type": "FName"
+      },
+      {
+        "name": "ChoiceC_ControlDelta",
+        "type": "int32"
+      },
+      {
+        "name": "ChoiceC_Flag",
+        "type": "FName"
+      },
+      {
+        "name": "EndsScene",
+        "type": "bool"
+      }
+    ]
+  }
+}
